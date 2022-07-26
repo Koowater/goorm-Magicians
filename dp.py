@@ -12,6 +12,7 @@ else:
 
 import torch
 
+import re
 from typing import List, Tuple, Dict, Any
 import json
 import random
@@ -99,8 +100,8 @@ class Preprocessor:
                 self.dataset["question" if pad_on_right else "context"],
                 self.dataset["context" if pad_on_right else "question"],
                 truncation="only_second" if pad_on_right else "only_first",
-                max_length=512,
-                stride=128, 
+                max_length=self.max_len,
+                stride=self.doc_stride, 
                 return_overflowing_tokens=True,
                 return_offsets_mapping=True,
                 padding='max_length'
@@ -167,6 +168,29 @@ class Preprocessor:
             
         return output
 
+    def tokenize_eval(self):
+        output = []
+        print(f'Tokenizing...')
+        pad_on_right = self.tokenizer.padding_side == "right"
+
+        # Tokenization
+        tokenized_examples = self.tokenizer(
+                self.dataset["question" if pad_on_right else "context"],
+                self.dataset["context" if pad_on_right else "question"],
+                truncation="only_second" if pad_on_right else "only_first",
+                max_length=self.max_len,
+                stride=self.doc_stride, 
+                return_overflowing_tokens=True,
+                return_offsets_mapping=True,
+                padding='max_length'
+            )
+        
+        # guid matching
+        _guid = list(map(lambda x: self.dataset['guid'][x], tokenized_examples['overflow_to_sample_mapping']))
+        tokenized_examples['guid'] = _guid
+
+        return tokenized_examples
+
 def collator(_samples):
     keys = _samples[0].keys()
     samples = dict()
@@ -205,3 +229,96 @@ def compute_levenshtein(s1, s2, debug=False):
         previous_row = current_row
 
     return previous_row[-1]
+
+class Postprocessor:
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+
+    def levenshtein_distance(self, s1, s2):
+        if len(s1) < len(s2):
+            return self.levenshtein_distance(s2, s1)
+
+        if len(s2) == 0:
+            return len(s1)
+
+        previous_row = range(len(s2) + 1)
+        for i, c1 in enumerate(s1):
+            current_row = [i + 1]
+            for j, c2 in enumerate(s2):
+                insertions = previous_row[j + 1] + 1
+                deletions = current_row[j] + 1
+                substitutions = previous_row[j] + (c1 != c2)
+                current_row.append(min(insertions, deletions, substitutions))
+
+            previous_row = current_row
+
+        return previous_row[-1]
+
+    def decode_pred_and_true(self, pred_ids, true_ids):
+        pred_answer = list(map(lambda x: self.tokenizer.decode(x), pred_ids))
+        true_answer = list(map(lambda x: self.tokenizer.decode(x), true_ids))
+        return pred_answer, true_answer
+
+    def postprocess(self, input_ids, pred, true, dist=True, max_len=20):
+        pred_s, pred_e = pred
+        true_s, true_e = true
+
+        batch_size = len(pred_s)
+        # end가 start보다 먼저 나오면, 답을 찾을 수 없는 경우로 판단합니다.
+        
+        for i in range(batch_size):
+            if pred_s[i] > pred_e[i]:
+                pred_s[i] = 0
+                pred_e[i] = 0     
+
+        pred_ids = []
+        true_ids = []
+        # start, end로 answer string을 구합니다.
+        for i in range(batch_size):
+            pred_ids.append(input_ids[i][pred_s[i]:pred_e[i]+1])
+            true_ids.append(input_ids[i][true_s[i]:true_e[i]+1])
+        pred_answer, true_answer = self.decode_pred_and_true(pred_ids, true_ids)
+        
+        # pred answer의 길이가 max_len을 초과하는지 확인합니다.
+        if max_len:
+            pred_answer = list(map(lambda x: x if len(x) <= max_len else '', pred_answer))       
+
+        # answer에서 special token을 삭제합니다.
+        pred_answer = list(map(self.remove_tokens, pred_answer))
+        true_answer = list(map(self.remove_tokens, true_answer))
+
+        if dist:
+            levenshtein_distances = list(map(lambda x: self.levenshtein_distance(x[0], x[1]), zip(pred_answer, true_answer)))
+            return pred_answer, true_answer, levenshtein_distances
+        else:
+            return pred_answer, true_answer
+
+    def postprocess_eval(self, input_ids, pred):
+        pred_s, pred_e = pred
+
+        batch_size = len(pred_s)
+        # end가 start보다 먼저 나오면, 답을 찾을 수 없는 경우로 판단합니다.
+        
+        for i in range(batch_size):
+            if pred_s[i] > pred_e[i]:
+                pred_s[i] = 0
+                pred_e[i] = 0     
+
+        pred_ids = []
+        # start, end로 answer string을 구합니다.
+        for i in range(batch_size):
+            pred_ids.append(input_ids[i][pred_s[i]:pred_e[i]+1])
+        pred_answer = pred_answer = list(map(lambda x: self.tokenizer.decode(x), pred_ids))
+
+        return pred_answer
+    
+    def remove_tokens(self, answer):
+        p = re.compile(r'(\[CLS\]|\[SEP\]|\[PAD\]|#)')
+        answer = p.sub('', answer)
+        answer.strip()
+        return answer
+
+if __name__ == '__main__':
+    s1 = '안녕하세요'
+    s2 = '오 안녕하세'
+    print(compute_levenshtein(s1, s2, True))
