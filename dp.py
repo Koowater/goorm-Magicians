@@ -76,20 +76,27 @@ class Preprocessor:
         self.padding_side = padding_side
         self.dataset = None
 
-    def load_dataset(self, dataset):
+    def load_dataset(self, dataset, eval=False):
         _guid = list(map(lambda x: x['guid'], dataset))
         _context = list(map(lambda x: x['context'], dataset))
         _question = list(map(lambda x: x['question'], dataset))
-        _answers = list(map(lambda x: x['answers'], dataset))
-        
-        assert len(_guid) == len(_context) == len(_question) == len(_answers)
-        
-        self.dataset = {'guid': _guid, 
-                        'context': _context, 
-                        'question': _question,
-                        'answers': _answers
-                        }
+        if not eval:
+            _answers = list(map(lambda x: x['answers'], dataset))
 
+        if eval:
+            assert len(_guid) == len(_context) == len(_question)
+            self.dataset = {'guid': _guid, 
+                            'context': _context, 
+                            'question': _question
+                            }
+        else:
+            assert len(_guid) == len(_context) == len(_question) == len(_answers)
+            self.dataset = {'guid': _guid, 
+                            'context': _context, 
+                            'question': _question,
+                            'answers': _answers
+                            }
+            
     def tokenize(self):
         output = []
         print(f'Tokenizing...')
