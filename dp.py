@@ -299,25 +299,6 @@ class Postprocessor:
             return pred_answer, true_answer, levenshtein_distances
         else:
             return pred_answer, true_answer
-
-    def postprocess_eval(self, input_ids, pred):
-        pred_s, pred_e = pred
-
-        batch_size = len(pred_s)
-        # end가 start보다 먼저 나오면, 답을 찾을 수 없는 경우로 판단합니다.
-        
-        for i in range(batch_size):
-            if pred_s[i] > pred_e[i]:
-                pred_s[i] = 0
-                pred_e[i] = 0     
-
-        pred_ids = []
-        # start, end로 answer string을 구합니다.
-        for i in range(batch_size):
-            pred_ids.append(input_ids[i][pred_s[i]:pred_e[i]+1])
-        pred_answer = pred_answer = list(map(lambda x: self.tokenizer.decode(x), pred_ids))
-
-        return pred_answer
     
     def remove_tokens(self, answer):
         p = re.compile(r'(\[CLS\]|\[SEP\]|\[PAD\]|#)')
