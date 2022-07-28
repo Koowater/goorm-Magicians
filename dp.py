@@ -261,9 +261,12 @@ class Postprocessor:
 
         return previous_row[-1]
 
+    def decode_batch(self, input_ids):
+        return list(map(lambda x: self.tokenizer.decode(x), input_ids))
+
     def decode_pred_and_true(self, pred_ids, true_ids):
-        pred_answer = list(map(lambda x: self.tokenizer.decode(x), pred_ids))
-        true_answer = list(map(lambda x: self.tokenizer.decode(x), true_ids))
+        pred_answer = self.decode_batch(pred_ids)
+        true_answer = self.decode_batch(true_ids)
         return pred_answer, true_answer
 
     def postprocess(self, input_ids, pred, true, dist=True, max_len=20):
@@ -271,8 +274,8 @@ class Postprocessor:
         true_s, true_e = true
 
         batch_size = len(pred_s)
+
         # end가 start보다 먼저 나오면, 답을 찾을 수 없는 경우로 판단합니다.
-        
         for i in range(batch_size):
             if pred_s[i] > pred_e[i]:
                 pred_s[i] = 0
@@ -280,6 +283,7 @@ class Postprocessor:
 
         pred_ids = []
         true_ids = []
+
         # start, end로 answer string을 구합니다.
         for i in range(batch_size):
             pred_ids.append(input_ids[i][pred_s[i]:pred_e[i]+1])
@@ -305,6 +309,65 @@ class Postprocessor:
         answer = p.sub('', answer)
         answer.strip()
         return answer
+
+    def remove_UNK(self, answer):
+        p = re.compile(r'(\[UNK\])')
+        answer = p.sub('', answer)
+        answer.strip()
+        return answer
+
+    def eval(self, input_ids, s_logits, e_logits, max_len=40, verbose=False):
+        batch_size = s_logits.shape[0]
+        UNK_exist = False
+        max_logits = []
+        start = torch.argmax(s_logits, dim=1)
+        end = torch.argmax(e_logits, dim=1)
+        for i in range(batch_size):
+            max_logits.append([s_logits[i][start[i]], e_logits[i][end[i]]])
+
+        # end가 start보다 먼저 나오면, 답을 찾을 수 없는 경우로 판단합니다.
+        for i in range(batch_size):
+            if start[i] > end[i]:
+                start[i] = 0
+                end[i] = 0    
+
+        pred_ids = []
+        for i in range(batch_size):
+            pred_ids.append(input_ids[i][start[i]:end[i]+1])
+
+        pred_answer = self.decode_batch(pred_ids) # ids -> answer string
+        pred_answer = list(map(self.remove_tokens, pred_answer)) # remove special tokens
+
+        # pred answer의 길이가 max_len을 초과하는지 확인합니다.
+        if max_len:
+            if verbose: print(f'raw answers: {pred_answer}')
+            pred_answer = list(map(lambda x: x if len(x) <= max_len else '', pred_answer))  
+
+        # answer를 추려낼 예정이기 때문에, 본래의 idx를 관리합니다.
+        pred_answer = list(zip(range(batch_size), pred_answer))
+        
+        # 빈 string을 제거합니다.
+        pred_answer = [i for i in pred_answer if i[1] != '']
+
+        # 남은 문자열이 2개 이상이면
+        if len(pred_answer) > 1:
+            # 남은 문자열 중 가장 logit 값이 높은 정답만 고릅니다.
+            max_logit = 0.
+            max_answer = ''
+            for idx, answer in pred_answer:
+                if verbose: print(f'{sum(max_logits[idx])}', end=' ')
+                if sum(max_logits[idx]) > max_logit:
+                    max_logit = sum(max_logits[idx])
+                    max_answer = answer
+            pred_answer = max_answer
+        elif len(pred_answer) == 1:
+            pred_answer = pred_answer[0][1]
+        elif len(pred_answer) == 0:
+            pred_answer = ''
+
+        pred_answer = self.remove_UNK(pred_answer)
+
+        return pred_answer.strip()
 
 if __name__ == '__main__':
     s1 = '안녕하세요'
