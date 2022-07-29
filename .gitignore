@@ -3,3 +3,4 @@
 /output
 /__pycache__
 /data/KoEDA_train.json
+/data/KoEDA_and_Multi_answer.json
