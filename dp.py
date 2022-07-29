@@ -11,6 +11,7 @@ else:
     from tqdm import tqdm
 
 import torch
+from torch import nn
 
 import re
 from typing import List, Tuple, Dict, Any
