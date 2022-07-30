@@ -15,6 +15,7 @@ from torch import nn
 
 import re
 from typing import List, Tuple, Dict, Any
+import numpy as np
 import json
 import random
 
@@ -317,7 +318,7 @@ class Postprocessor:
         answer.strip()
         return answer
 
-    def eval(self, input_ids, s_logits, e_logits, max_len=40, verbose=False):
+    def eval(self, input_ids, s_logits, e_logits, context, offset, max_len=40, verbose=False):
         batch_size = s_logits.shape[0]
         UNK_exist = False
         max_logits = []
@@ -338,6 +339,15 @@ class Postprocessor:
 
         pred_answer = self.decode_batch(pred_ids) # ids -> answer string
         pred_answer = list(map(self.remove_tokens, pred_answer)) # remove special tokens
+
+        # [UNK] token 복원
+        for i in range(batch_size):
+            if 1 in input_ids[i][start[i]:end[i]+1]:
+                unk_idx = np.where(input_ids[i][start[i]:end[i]+1] == 1)[0]
+                unk = [context[offset[i][j][0]:offset[i][j][1]+1] for j in unk_idx]
+                for j in unk:
+                    unk_idx2 = pred_answer[i].index('[UNK]')
+                    pred_answer[i] = pred_answer[i][:unk_idx2] + j + pred_answer[i][unk_idx2+5:]
 
         # pred answer의 길이가 max_len을 초과하는지 확인합니다.
         if max_len:

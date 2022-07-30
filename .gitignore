@@ -3,4 +3,9 @@
 /output
 /__pycache__
 /data/KoEDA_train.json
-/data/KoEDA_and_Multi_answer.json
+/data/AIHub_train.json
+/data/AIHub_KoEDA_train.json
+/data/AIHub_10000.json
+/data/TL_10000.json
+/data/TL_span_extraction.json
+/data/data.zip
