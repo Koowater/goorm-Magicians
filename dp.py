@@ -343,8 +343,8 @@ class Postprocessor:
         # [UNK] token 복원
         for i in range(batch_size):
             if 1 in input_ids[i][start[i]:end[i]+1]:
-                unk_idx = np.where(input_ids[i][start[i]:end[i]+1] == 1)[0]
-                unk = [context[offset[i][j][0]:offset[i][j][1]+1] for j in unk_idx]
+                unk_idx = torch.where(input_ids[i][start[i]:end[i]+1] == 1)[0] + start[i]
+                unk = [context[offset[i][j][0]:offset[i][j][1]] for j in unk_idx]
                 for j in unk:
                     unk_idx2 = pred_answer[i].index('[UNK]')
                     pred_answer[i] = pred_answer[i][:unk_idx2] + j + pred_answer[i][unk_idx2+5:]
