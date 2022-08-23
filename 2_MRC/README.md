@@ -1,6 +1,6 @@
 # 기계독해(MRC, Machine Reading Comprehension) competition
 
-goorm KDT NLP 2차 프로젝트의 4조 페이지입니다.
+goorm KDT NLP 4조(언어의 마술4조)의 2차 프로젝트 페이지입니다.
 
 ## About files and folders
 
@@ -52,30 +52,29 @@ utils.py
 
 후처리 과정은 다음과 같습니다.
 
-1. start, end position 교차 여부 확인
+1. *start, end position 교차 여부 확인*
     
     end가 start보다 앞에 존재하면 잘못된 추론이라고 판단하였습니다.
 
-2. 추론된 start, end position으로 정답 문자열 생성
+2. *추론된 start, end position으로 정답 문자열 생성*
 
-3. [UNK] token 복원
+3. *[UNK] token 복원*
 
     offset mapping을 통해 원본 context에서 원본 문자열을 참조하였습니다.
 
-4. Special token 삭제
+4. *Special token 삭제*
 
-5. pred answer의 max_len 초과 여부 확인
+5. *pred answer의 max_len 초과 여부 확인*
 
     모델이 추론하는 정답의 길이를 제한하면 편집거리가 감소하였습니다. 최적의 max_len은 추후 실험을 통해 찾아냈습니다.
 
-6. 답이 빈 문자열이라면 제거 
+6. *답이 빈 문자열이라면 제거*
 
-7. 답이 2개 이상 남아있다면 start, end logit의 합이 더 큰 경우를 최종 답으로 선정
+7. *답이 2개 이상 남아있다면 start, end logit의 합이 더 큰 경우를 최종 답으로 선정*
 
-8. 정답 문자열의 끝 조사 제거, 특수문자 사이 공백 제거
+8. *정답 문자열의 끝 조사 제거, 특수문자 사이 공백 제거*
 
     추론된 정답의 마지막에 조사가 포함되는 경우가 다수 발견되어서, 이를 제거하고 불필요한 공백을 제거했습니다.
-
 
 ## 2.3 LM training
 
@@ -85,7 +84,7 @@ KorQuAD Dataset에 사전학습된 ELECTRA model을 사용하였습니다. WandB
 
 ## 2.4 Dataset
 
-성능 비교를 통해 AIHub 내의 행정 문서 데이터셋을 기존 학습 데이터셋과 함께 학습하는 것이 가장 좋은 성능을 보였습니다.
+실험을 통해 AIHub 내의 행정 문서 데이터셋을 기존 학습 데이터셋과 함께 학습하는 것이 가장 좋은 성능을 나타내는 것을 확인했습니다. 이를 최종 학습 데이터셋으로 선정하였습니다.
 
 ## 3. 프로젝트 결과
 
