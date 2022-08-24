@@ -1,0 +1,67 @@
+<style>
+    div {
+        float:left;
+    }
+	.box-container{
+		display: inline-block;
+		margin: 5px 15px;
+	}
+	#box1{ margin: 10px; }
+</style>
+
+
+
+<div>
+<h1>YouTube</h1>
+<div id="ytplayer"></div>
+</div>
+<script>
+  var tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/player_api";
+  var firstScriptTag = document.getElementsByTagName('script')[0];
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+  var player;
+  function onYouTubePlayerAPIReady() {
+    player = new YT.Player('ytplayer', {
+      height: '450',
+      width: '800',
+      videoId: "{{ code }}"
+    });
+  }
+</script>
+
+
+<div>
+<h1>Magician's video</h1>
+
+
+<video width="800" height="450" controls crossorigin="true">
+   <source src="{{ url_for('get_video', code=code) }}" type="video/mp4">
+   <track kind="captions" src="{{ url_for('get_ko_vtt', code=code) }}" srclang="ko"
+      label="한국어" default="한국어">
+   <track kind="captions" src="{{ url_for('get_en_vtt', code=code) }}" srclang="en"
+      label="영어">
+   <p>이 브라우저는 video를 재생할 수 없습니다.</p>
+</video>
+</div>
+
+<div id="box1">
+<form action="submit" onsubmit="return urlSubmit()">
+  URL : <input type="text" name="URL" id="URL" size="50" style="font-size:20px;">
+  <button id='url' style="font-size:16px;">전송</button><br>
+  ※ 영상 길이가 길수록 오래 오래 걸립니다. 
+</form>
+</div>
+
+<script>
+  function urlSubmit(e) {
+    var result = true;
+    var URL = document.getElementById("URL");
+    if (URL.length == 0) {
+      URL = "URL Error";
+      result = false;
+    }
+    return result
+  }
+</script>

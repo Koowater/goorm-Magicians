@@ -2,6 +2,8 @@
 
 goorm KDT NLP 4조(언어의 마술4조)의 2차 프로젝트 페이지입니다.
 
+프로젝트에 대한 더욱 자세한 내용은 `presentation.pptx`를 참고해주세요.
+
 ## About files and folders
 
 ```
