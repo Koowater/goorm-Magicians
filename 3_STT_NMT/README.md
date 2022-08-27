@@ -55,6 +55,10 @@ yt.py
 
 ## 3. 프로젝트 결과
 
-![test](static/videos/demo/demo.mp4)
+TODO list
+
+- WER, BLEU score로 프로젝트 결과를 보여주자.
+- 데모 영상을 띄우자.
+- 자체 평가 및 보완 작성
 
 ## 4. 자체 평가 및 보완
